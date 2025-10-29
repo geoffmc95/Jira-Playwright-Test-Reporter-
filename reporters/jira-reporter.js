@@ -4,6 +4,19 @@ require('dotenv').config();
 
 class JiraReporter {
   constructor(options = {}) {
+    // Validate required environment variables
+    const requiredEnv = [
+      { key: 'JIRA_BASE_URL', value: process.env.JIRA_BASE_URL },
+      { key: 'JIRA_EMAIL', value: process.env.JIRA_EMAIL },
+      { key: 'JIRA_API_TOKEN', value: process.env.JIRA_API_TOKEN }
+    ];
+    const missing = requiredEnv.filter(e => !e.value).map(e => e.key);
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing required environment variables for JiraReporter: ${missing.join(', ')}`
+      );
+    }
+
     this.jiraConfig = {
       baseURL: process.env.JIRA_BASE_URL,
       headers: {
@@ -27,7 +40,8 @@ class JiraReporter {
 
   onTestEnd(test, result) {
     // Extract test ID from test title (e.g., "VAL-001: Page Load and Initial State")
-    const testIdMatch = test.title.match(/(VAL-\d+):/);
+    const testIdPattern = new RegExp(`(${this.projectKey}-\\d+):`);
+    const testIdMatch = test.title.match(testIdPattern);
     if (!testIdMatch) {
       console.log(`No Jira test ID found in: ${test.title}`);
       return;
