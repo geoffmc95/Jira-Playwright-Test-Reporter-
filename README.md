@@ -8,7 +8,8 @@
 -Jira API token </br>
 -Jira Project Key </br> 
 -Jira Base URL (usally https://youraccountname.atlassian.et) </br>
--Everything within the 'Scripts' section of Package.JSON in this repo. 
+-Everything within the 'Scripts' section of Package.json in this repo. 
+-Everything within the 'reporter' section of playwright.config.json
 ```
 npm init playwright@latest 
 npx tsc --init 
