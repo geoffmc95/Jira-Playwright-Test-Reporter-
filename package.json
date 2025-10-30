@@ -1,0 +1,26 @@
+{
+  "name": "playwright_agents",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.9.2",
+    "cross-env": "^10.1.0"
+  },
+  "dependencies": {
+    "axios": "^1.13.1",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.2.3"
+  },
+  "scripts": {
+    "sync-to-jira": "cross-env DRY_RUN=false node sync-traceability-to-jira.js",
+    "sync-to-jira-dry": "cross-env DRY_RUN=true node sync-traceability-to-jira.js",
+    "sync-to-jira-update": "cross-env DRY_RUN=false UPDATE_EXISTING=true node sync-traceability-to-jira.js", 
+    "test": "npx playwright test"
+  }
+}
