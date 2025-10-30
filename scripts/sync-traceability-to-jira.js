@@ -63,14 +63,19 @@ class TraceabilityMatrixSync {
 
   async verifyJiraConnection() {
     try {
-      const response = await axios.get(`/rest/api/3/project/${this.projectKey}`, this.jiraConfig);
-      console.log(`Connected to Jira project: ${response.data.name}`);
-      return response.data;
+      console.log('Testing Jira connection...');
+      
+      // Test: Get project info
+      const projectResponse = await axios.get(`/rest/api/3/project/${this.projectKey}`, this.jiraConfig);
+      console.log(`Connected to Jira project: ${projectResponse.data.name}`);
+      console.log(`Note: Search functionality disabled due to endpoint limitations`);
+      
+      return projectResponse.data;
     } catch (error) {
       if (error.response?.status === 404) {
         throw new Error(`Project ${this.projectKey} not found. Please create it first.`);
       }
-      throw new Error(`Failed to connect to Jira: ${error.message}`);
+      throw new Error(`Failed to connect to Jira: ${error.response?.status} - ${error.message}`);
     }
   }
 
@@ -149,18 +154,10 @@ class TraceabilityMatrixSync {
   }
 
   async findExistingIssue(testId) {
-    try {
-      const jql = `project = ${this.projectKey} AND summary ~ "${testId}"`;
-      const response = await axios.get('/rest/api/3/search', {
-        ...this.jiraConfig,
-        params: { jql, maxResults: 1 }
-      });
-      
-      return response.data.issues[0] || null;
-    } catch (error) {
-      console.error(`Error searching for ${testId}:`, error.message);
-      return null;
-    }
+    // Since search endpoint returns 410, skip searching and assume no existing issues
+    // This means the script will always try to create new issues
+    console.log(`Skipping search for ${testId} (search endpoint not available)`);
+    return null;
   }
 
   async createJiraIssue(testCase) {
