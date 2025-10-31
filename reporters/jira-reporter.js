@@ -28,7 +28,7 @@ class JiraReporter {
       }
     };
     
-    this.projectKey = process.env.JIRA_PROJECT_KEY || 'VAL';
+    this.projectKey = process.env.JIRA_PROJECT_KEY || 'SCRUM';
     this.testResults = [];
     this.options = options;
   }
@@ -40,7 +40,7 @@ class JiraReporter {
 
   onTestEnd(test, result) {
     // Extract test ID from test title (e.g., "VAL-001: Page Load and Initial State")
-    const testIdPattern = new RegExp(`(${this.projectKey}-\\d+):`);
+    const testIdPattern = /(VAL-\d+):/;
     const testIdMatch = test.title.match(testIdPattern);
     if (!testIdMatch) {
       console.log(`No Jira test ID found in: ${test.title}`);
@@ -48,9 +48,11 @@ class JiraReporter {
     }
 
     const testId = testIdMatch[1];
+    const projectName = test.parent?.project()?.name || 'unknown';
     const testData = {
       testId,
       title: test.title,
+      project: projectName,
       status: result.status,
       duration: result.duration,
       error: result.error?.message,
@@ -61,6 +63,7 @@ class JiraReporter {
       attachments: result.attachments
     };
 
+    console.log(` Test completed: ${testId} [${projectName}] → ${result.status.toUpperCase()}`);
     this.testResults.push(testData);
     
     // Sync immediately for each test (optional - you can batch at the end)
@@ -70,7 +73,14 @@ class JiraReporter {
   }
 
   async onEnd(result) {
-    console.log(`\nTest execution completed. Syncing ${this.testResults.length} results to Jira...`);
+    console.log(`\n📈 Test execution completed. Syncing ${this.testResults.length} results to Jira...`);
+    
+    // Debug: Show what results we collected
+    const statusCounts = {};
+    this.testResults.forEach(t => {
+      statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
+    });
+    console.log(` Result breakdown: ${JSON.stringify(statusCounts)}`);
     
     if (this.options.syncImmediately === false) {
       // Batch sync all results
@@ -80,7 +90,7 @@ class JiraReporter {
     // Create or update test execution
     await this.createTestExecution(result);
     
-    console.log('Jira sync completed!');
+    console.log(' Jira sync completed!');
   }
 
   async syncTestToJira(testData) {
@@ -100,20 +110,10 @@ class JiraReporter {
   }
 
   async findJiraIssue(testId) {
-    try {
-      const searchUrl = `/rest/api/3/search`;
-      const jql = `project = ${this.projectKey} AND summary ~ "${testId}"`;
-      
-      const response = await axios.get(searchUrl, {
-        ...this.jiraConfig,
-        params: { jql, maxResults: 1 }
-      });
-      
-      return response.data.issues[0] || null;
-    } catch (error) {
-      console.error(`Error searching for issue ${testId}:`, error.message);
-      return null;
-    }
+    // For now, skip individual issue lookup since we need to map VAL-001 to SCRUM-X format
+    // This is a known limitation due to the search API issues we encountered
+    console.log(`Skipping issue lookup for ${testId} - will create execution summary instead`);
+    return null;
   }
 
   async updateTestStatus(issueKey, testData) {
@@ -237,18 +237,49 @@ class JiraReporter {
     const passed = this.testResults.filter(t => t.status === 'passed').length;
     const failed = this.testResults.filter(t => t.status === 'failed').length;
     const skipped = this.testResults.filter(t => t.status === 'skipped').length;
+    const interrupted = this.testResults.filter(t => t.status === 'interrupted').length;
+    const timedOut = this.testResults.filter(t => t.status === 'timedOut').length;
     
-    return `Automated Test Execution Summary:
+    const totalDuration = Math.round(result.duration / 1000);
+    const successRate = this.testResults.length > 0 ? Math.round((passed / this.testResults.length) * 100) : 0;
     
-Passed: ${passed}
-Failed: ${failed}
-Skipped: ${skipped}
-Total: ${this.testResults.length}
-Duration: ${Math.round(result.duration / 1000)}s
-Success Rate: ${Math.round((passed / this.testResults.length) * 100)}%
+    // Group tests by project for better reporting
+    const byProject = {};
+    this.testResults.forEach(t => {
+      if (!byProject[t.project]) byProject[t.project] = [];
+      byProject[t.project].push(t);
+    });
+    
+    let summary = `Automated Test Execution Summary:
+    
+ RESULTS OVERVIEW:
+• Passed: ${passed}
+• Failed: ${failed}
+• Skipped: ${skipped}`;
 
-Test Details:
-${this.testResults.map(t => `• ${t.testId}: ${t.status.toUpperCase()}`).join('\n')}`;
+    if (interrupted > 0) summary += `\n• Interrupted: ${interrupted}`;
+    if (timedOut > 0) summary += `\n• Timed Out: ${timedOut}`;
+    
+    summary += `
+• Total: ${this.testResults.length}
+• Duration: ${totalDuration}s
+• Success Rate: ${successRate}%
+
+ DETAILED RESULTS:`;
+
+    // Add results grouped by project
+    Object.keys(byProject).forEach(project => {
+      summary += `\n\n[${project.toUpperCase()}]:`;
+      byProject[project].forEach(t => {
+        const duration = Math.round(t.duration / 1000 * 100) / 100;
+        summary += `\n• ${t.testId}: ${t.status.toUpperCase()} (${duration}s)`;
+        if (t.error && t.status === 'failed') {
+          summary += `\n   Error: ${t.error.substring(0, 100)}${t.error.length > 100 ? '...' : ''}`;
+        }
+      });
+    });
+    
+    return summary;
   }
 
   async syncAllTestsToJira() {
