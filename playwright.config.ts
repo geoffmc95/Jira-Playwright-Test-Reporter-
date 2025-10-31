@@ -26,17 +26,19 @@ export default defineConfig({
   reporter: [
     ['html'],
     ['list'],
-    // Add the custom Jira reporter
+    // Add the custom Jira reporter with auto-healing
     [path.join(__dirname, 'reporters', 'jira-reporter.js'), {
       syncImmediately: true, // Sync each test result immediately
+      autoHeal: true, // Enable automatic test healing
       // syncImmediately: false, // Or batch sync at the end
+      // autoHeal: false, // Disable auto-healing
     }]
   ],
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: 'https://www.valvesoftware.com',
+    //baseURL: 
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
