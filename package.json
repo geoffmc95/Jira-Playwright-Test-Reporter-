@@ -21,6 +21,11 @@
     "sync-to-jira": "cross-env DRY_RUN=false node sync-traceability-to-jira.js",
     "sync-to-jira-dry": "cross-env DRY_RUN=true node sync-traceability-to-jira.js",
     "sync-to-jira-update": "cross-env DRY_RUN=false UPDATE_EXISTING=true node sync-traceability-to-jira.js", 
-    "test": "npx playwright test"
+    "test": "npx playwright test",
+    "test-heal": "npx playwright test --reporter=reporters/jira-reporter.js",
+    "test-heal-focused": "npx playwright test --project=chromium --max-failures=5 --reporter=reporters/jira-reporter.js",
+    "test-single": "npx playwright test --grep",
+    "test-single-heal": "npx playwright test --project=chromium --grep",
+    "test-single-no-heal": "npx playwright test --grep --reporter=html,list"
   }
 }
